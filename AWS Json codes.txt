@@ -1,0 +1,188 @@
+json policy for s3 b..>	
+
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject"
+            ],
+            "Resource": "arn:aws:s3:::'source-bucket name'/*"
+        },
+        {
+            "Sid": "VisualEditor1",
+            "Effect": "Allow",
+            "Action": "s3:ListBucket",
+            "Resource": [
+                "arn:aws:s3:::'source-bucket name'",
+                "arn:aws:s3:::'source-bucket name'/*"
+            ]
+        },
+        {
+            "Sid": "VisualEditor2",
+            "Effect": "Allow",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::'destination-bucket name'/*"
+        }
+    ]
+}
+
+lamda fn for backup ..>	
+
+import boto3
+import json
+
+s3 = boto3.resource('s3')
+
+def lambda_handler (event, context):
+ bucket = s3.Bucket('source-bucket')
+ dest_bucket=s3.Bucket('destination-bucket')
+
+ print(dest_bucket)
+ print(bucket)
+ 
+ for obj in bucket.objects.filter():
+  dest_key=obj.key
+  print(dest_key)
+  print('copy file ' + dest_key)
+  s3.Object(dest_bucket.name, dest_key).copy_from(CopySource= {'Bucket': obj.bucket_name, 'Key': obj.key})
+ 
+Jason Policy For sto..>
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:*:*:*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:Start*",
+        "ec2:Stop*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}	
+
+lambda automate ec2.txt	
+
+START THE INSTANCE AUTOMATE:
+import boto3
+region = 'ap-south-1'
+instances = ['i-012aade96a9995668']
+ec2 = boto3.client('ec2', region_name=region)
+
+def lambda_handler(event, context):
+    ec2.start_instances(InstanceIds=instances)
+    print('started your instances: ' + str(instances))
+
+STOP THE INSTANCE AUTOMATE:
+import boto3
+region = 'ap-south-1'
+instances = ['i-012aade96a9995668']
+ec2 = boto3.client('ec2', region_name=region)
+
+def lambda_handler(event, context):
+    ec2.stop_instances(InstanceIds=instances)
+    print('stopped your instances: ' + str(instances))
+
+Json policy.txt
+
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "logs:DisassociateKmsKey",
+                "logs:DeleteSubscriptionFilter",
+                "logs:UntagLogGroup",
+                "logs:DeleteLogGroup",
+                "logs:DeleteLogStream",
+                "logs:PutLogEvents",
+                "logs:CreateExportTask",
+                "logs:PutMetricFilter",
+                "s3:GetObject",
+                "logs:CreateLogStream",
+                "logs:DeleteMetricFilter",
+                "logs:TagLogGroup",
+                "sns:Publish",
+                "logs:DeleteRetentionPolicy",
+                "logs:AssociateKmsKey",
+                "logs:PutSubscriptionFilter",
+                "logs:PutRetentionPolicy"
+            ],
+            "Resource": [
+                "arn:aws:logs:*:<123456123456>:log-group:*:log-stream:*",
+                "arn:aws:logs:*:<123456123456>:log-group:*",
+                "arn:aws:s3:::<your-s3-bucket-name>/*",
+                "arn:aws:sns:*:<123456123456>:<your-sns-topic-name>"
+            ]
+        }
+    ]
+}
+
+lambda fn py.txt
+
+# -------------------------------------   PLEASE READ   ------------------------------------------
+# PURPOSE: This Python script is intended to be used as a AWS Lambda function with
+# Runtime Version Python3.7. When integrated with AWS S3 Bucket and SNS Topic. It report
+# through Email that changes(Update/deletion) has been made into the file in S3 bucket
+#
+# VERY IMPORTANT - REPLACE THE TEXT ENCLOSED IN BRACKETS <> on line#43 WITH YOUR SNS ARN
+# THE IMPLEMENTATION OF SCRIPT IS DEMONSTRATED AT YOUTUBE URL - <PLACEHOLDER>
+#
+# Please feel free to update script as per your usage and it is highly recommended that user READ
+# and UNDERSTAND the script and its purpose prior to the execution.
+# ------------------------------------------------------------------------------------------------
+
+import json
+import urllib.parse
+import boto3
+
+print('Loading function')
+
+s3 = boto3.client('s3')
+sns = boto3.client('sns')
+
+def lambda_handler(event, context):
+    #print("Received event: " + json.dumps(event, indent=2))
+
+    # Get the object, Key and eventName from the event and show its content type
+    bucket = event['Records'][0]['s3']['bucket']['name']
+    key = event['Records'][0]['s3']['object']['key']
+    eventname = event['Records'][0]['eventName']
+    sns_message = str("This Email Represent a File Status has been Changed in One of Your Bucket \n\n BUCKET NAME: "+ bucket +"\n\n FILE NAME: " + key + "\n\n OPERATION: " + eventname + "\n\n")
+    try:
+        print(eventname)
+        if eventname == "ObjectRemoved:Delete":
+            print("File is being Deleted")
+            sns_message += str("File Deleted")
+        else:
+            response = s3.get_object(Bucket=bucket, Key=key)
+            sns_message += str("FILE CONTENT TYPE: " + str(response['ContentType']) + "\n\nFILE CONTENT: " + str(response['Body'].read()))
+            print("CONTENT TYPE: " + response['ContentType'])
+        print(str(sns_message))
+        subject= "S3 Bucket[" + bucket + "] Event[" + eventname + "]"
+        print(subject)
+        sns_response = sns.publish(
+        TargetArn='<REPLACE THIS WITH YOUR SNS ARN>',
+        Message= str(sns_message),
+        Subject= str(subject)
+        )
+        #return response['ContentType']
+    except Exception as e:
+        print(e)
+        print('Error getting object {} from bucket {}. Make sure they exist and your bucket is in the same region as this function.'.format(key, bucket))
+        raise e	
